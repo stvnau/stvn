@@ -1,61 +1,70 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config, InterestArea } from "./config";
-import { RawArticle } from "./news";
 import { CachedArticle, LeaderLesson } from "./cache";
 
 function getClient(): Anthropic {
   return new Anthropic();
 }
 
-export async function reframeArticle(
-  raw: RawArticle,
-  interest: InterestArea
-): Promise<Omit<CachedArticle, "id"> | null> {
+export async function fetchAndReframeForInterest(
+  interest: InterestArea,
+  count: number
+): Promise<Omit<CachedArticle, "id">[]> {
   const client = getClient();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const prompt = `You are reframing a news article for a personal daily newspaper.
+  const prompt = `Search for ${count} recent, real news stories about: ${interest.searchTerms.join(", ")}.
+Focus on: ${interest.description}
 
-Interest area: ${interest.label} — ${interest.description}
-
-Original headline: ${raw.title}
-Original description: ${raw.description}
-Source: ${raw.source}
+Find stories from the past few days (today is ${today}). Use web search to find real, current articles.
 
 ${config.reframeTone}
 
-Respond in exactly this JSON format, no other text:
-{
-  "reframedHeadline": "A WSJ-style headline that captures the story with an opportunity/growth angle",
-  "reframedSummary": "2-3 sentences of accurate reporting. Preserve all facts from the original. Write in WSJ prose style — authoritative, concise.",
-  "whatThisMeans": "2-3 sentences from a mentor's perspective. How could this development relate to personal growth, skills, or goals? Be specific and actionable, not generic. Never invent facts."
-}`;
+For each article you find, return it in the JSON array format below. No other text outside the JSON.
+[
+  {
+    "originalHeadline": "The exact original headline from the source",
+    "originalDescription": "1-2 sentence factual summary of what happened",
+    "sourceUrl": "The URL of the original article",
+    "sourceName": "The publication name",
+    "publishedAt": "ISO date string",
+    "reframedHeadline": "A WSJ-style headline with an opportunity/growth angle",
+    "reframedSummary": "2-3 sentences of accurate reporting. Preserve all facts. WSJ prose style.",
+    "whatThisMeans": "2-3 sentences from a mentor's perspective on how this relates to personal growth. Specific and actionable, never generic. Never invent facts."
+  }
+]`;
 
   try {
     const message = await client.messages.create({
       model: config.model,
-      max_tokens: 512,
+      max_tokens: 2048,
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
-    const parsed = JSON.parse(text);
+    const textBlock = message.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") return [];
 
-    return {
+    const jsonMatch = textBlock.text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((a: Record<string, string>) => ({
       interestId: interest.id,
-      originalHeadline: raw.title,
-      originalDescription: raw.description,
-      sourceUrl: raw.url,
-      sourceName: raw.source,
-      publishedAt: raw.publishedAt,
-      reframedHeadline: parsed.reframedHeadline,
-      reframedSummary: parsed.reframedSummary,
-      whatThisMeans: parsed.whatThisMeans,
-      imageUrl: raw.image,
-    };
+      originalHeadline: a.originalHeadline ?? "",
+      originalDescription: a.originalDescription ?? "",
+      sourceUrl: a.sourceUrl ?? "",
+      sourceName: a.sourceName ?? "",
+      publishedAt: a.publishedAt ?? today,
+      reframedHeadline: a.reframedHeadline ?? "",
+      reframedSummary: a.reframedSummary ?? "",
+      whatThisMeans: a.whatThisMeans ?? "",
+    }));
   } catch (e) {
-    console.error("Failed to reframe article:", raw.title, e);
-    return null;
+    console.error(`Failed to fetch/reframe for ${interest.label}:`, e);
+    return [];
   }
 }
 
