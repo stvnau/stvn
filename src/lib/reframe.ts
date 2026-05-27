@@ -42,11 +42,18 @@ For each article you find, return it in the JSON array format below. No other te
       messages: [{ role: "user", content: prompt }],
     });
 
-    const textBlock = message.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") return [];
+    const textBlocks = message.content.filter((b) => b.type === "text");
+    const textBlock = textBlocks[textBlocks.length - 1];
+    if (!textBlock || textBlock.type !== "text") {
+      console.error(`No text block for ${interest.label}. Block types:`, message.content.map(b => b.type));
+      return [];
+    }
 
     const jsonMatch = textBlock.text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) {
+      console.error(`No JSON array found for ${interest.label}. Text:`, textBlock.text.slice(0, 200));
+      return [];
+    }
 
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
