@@ -1,6 +1,5 @@
 import { config } from "./config";
-import { fetchNewsForTopic } from "./news";
-import { reframeArticle, generateLeaderLesson } from "./reframe";
+import { fetchAndReframeForInterest, generateLeaderLesson } from "./reframe";
 import {
   CachedArticle,
   DailyEdition,
@@ -16,22 +15,19 @@ export async function generateDailyEdition(): Promise<DailyEdition> {
 
   for (const interest of config.interests) {
     try {
-      const rawArticles = await fetchNewsForTopic(
-        interest.searchTerms,
+      const reframed = await fetchAndReframeForInterest(
+        interest,
         config.articlesPerInterest
       );
 
-      for (const raw of rawArticles) {
-        const reframed = await reframeArticle(raw, interest);
-        if (reframed) {
-          articles.push({
-            ...reframed,
-            id: `${date}-${articleIndex++}`,
-          });
-        }
+      for (const article of reframed) {
+        articles.push({
+          ...article,
+          id: `${date}-${articleIndex++}`,
+        });
       }
     } catch (e) {
-      console.error(`Failed to fetch/reframe for ${interest.id}:`, e);
+      console.error(`Failed for ${interest.id}:`, e);
     }
   }
 
