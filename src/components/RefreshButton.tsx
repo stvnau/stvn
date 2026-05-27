@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { refreshEdition } from "@/app/actions";
 
 export default function RefreshButton() {
   const [loading, setLoading] = useState(false);
@@ -10,10 +11,9 @@ export default function RefreshButton() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/refresh", { method: "POST" });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Refresh failed");
+      const result = await refreshEdition();
+      if (!result.success) {
+        throw new Error(result.error || "Refresh failed");
       }
       window.location.reload();
     } catch (e) {
@@ -29,7 +29,7 @@ export default function RefreshButton() {
         disabled={loading}
         className="font-[family-name:var(--font-dm-sans)] text-sm px-6 py-2.5 bg-ink text-paper tracking-wider uppercase hover:bg-ink-light transition-colors disabled:opacity-50"
       >
-        {loading ? "Generating Today’s Edition…" : "Generate Today’s Edition"}
+        {loading ? "Generating Today's Edition…" : "Generate Today's Edition"}
       </button>
       {error && (
         <p className="mt-3 text-sm text-red-700 font-[family-name:var(--font-dm-sans)]">
