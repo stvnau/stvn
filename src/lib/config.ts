@@ -50,6 +50,7 @@ CRITICAL RULES:
 - Keep the tone confident and actionable, not saccharine or delusional.
 - Write like the Wall Street Journal — authoritative, concise, sophisticated.`,
 
+  model: "claude-sonnet-4-6",
   articlesPerInterest: 2,
   refreshCadenceHours: 24,
   cacheDir: "data",

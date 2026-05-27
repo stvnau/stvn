@@ -32,7 +32,7 @@ Respond in exactly this JSON format, no other text:
 
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-5-20250514",
+      model: config.model,
       max_tokens: 512,
       messages: [{ role: "user", content: prompt }],
     });
@@ -93,7 +93,7 @@ Respond in exactly this JSON format, no other text:
 
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-5-20250514",
+      model: config.model,
       max_tokens: 512,
       messages: [{ role: "user", content: prompt }],
     });
