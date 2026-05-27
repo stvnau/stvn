@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/content";
+import { formatDate } from "@/lib/format";
 
 interface MastheadProps {
   date: Date;
